@@ -16,5 +16,9 @@ firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
 
+// 공용 PC 대비: 세션 지속성을 SESSION으로 설정
+// → 브라우저 탭/창을 닫으면 로그인 상태 자동 소멸 (localStorage에 저장 안 함)
+auth.setPersistence(firebase.auth.Auth.Persistence.SESSION);
+
 // 관리자 이메일
 const ADMIN_EMAIL = 'kdevelop1592@gmail.com';
