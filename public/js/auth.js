@@ -18,11 +18,13 @@ const Auth = (() => {
         }
     }
 
-    // 로그아웃 (플래그 초기화 후 index.html로 이동)
+    // 로그아웃 (플래그 초기화 → Firebase 로그아웃 → Google 계정도 로그아웃)
     async function signOut() {
         sessionStorage.removeItem(FRESH_KEY);
         await auth.signOut();
-        window.location.href = '/index.html';
+        // Google 계정 세션도 완전히 종료하여 다음 사용자가 비밀번호를 직접 입력하게 함
+        const returnUrl = encodeURIComponent(window.location.origin + '/index.html');
+        window.location.href = 'https://accounts.google.com/Logout?continue=' + returnUrl;
     }
 
     // 관리자 이메일 하드코딩

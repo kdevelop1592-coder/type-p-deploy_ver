@@ -146,8 +146,8 @@
                 </div>
             </div>
 
-            <!-- 모드 선택 (4개 grid) -->
-            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px">
+            <!-- 모드 선택 (5개 grid) -->
+            <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:20px">
                 <div class="mode-card" data-mode="keyboard" onclick="setMode('keyboard')">
                     <div class="mode-icon">⌨️</div>
                     <div class="mode-title">자리연습</div>
@@ -167,6 +167,11 @@
                     <div class="mode-icon">📖</div>
                     <div class="mode-title">문단 연습</div>
                     <div class="mode-desc">긴 지문 도전</div>
+                </div>
+                <div class="mode-card" data-mode="minigame" onclick="location.href='/bubble.html'">
+                    <div class="mode-icon">🫧</div>
+                    <div class="mode-title">버블 슈터</div>
+                    <div class="mode-desc">단어로 버블 격파!</div>
                 </div>
             </div>
 

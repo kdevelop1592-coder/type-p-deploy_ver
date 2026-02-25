@@ -59,5 +59,11 @@ service cloud.firestore {
       allow read: if isLoggedIn();
       allow write: if isAdmin();
     }
+
+    // ── bubbleRanking 컬렉션 (미니게임 랭킹) ──────────────
+    match /bubbleRanking/{uid} {
+      allow read: if isLoggedIn();
+      allow write: if isOwner(uid);
+    }
   }
 }

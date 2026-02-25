@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>버블 슈터 — 경덕중학교 타자마스터</title>
+    <meta name="description" content="단어를 타이핑해서 버블을 격파하는 미니게임">
+    <link rel="stylesheet" href="css/main.css">
+    <link rel="stylesheet" href="css/bubble.css">
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+</head>
+
+<body>
+
+    <!-- 네비게이션 -->
+    <nav class="nav">
+        <div class="nav-inner">
+            <a href="/app.html" class="nav-logo">
+                <img src="/img/logo.png" alt="경덕중학교"
+                    style="width:32px;height:32px;border-radius:50%;vertical-align:middle;margin-right:8px">
+                경덕중학교 타자마스터
+            </a>
+            <div class="nav-user">
+                <span id="nav-name" style="font-size:0.9rem;color:var(--text-secondary)"></span>
+                <img id="nav-avatar" src="" alt="프로필" class="nav-avatar">
+                <a href="/app.html" class="btn-secondary" style="padding:8px 16px;font-size:0.85rem">← 연习으로</a>
+                <button class="btn-icon" onclick="Auth.signOut()" title="로그아웃">🚪</button>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container" style="padding-top:24px;padding-bottom:64px">
+
+        <!-- 시작 전 소개 화면 -->
+        <div id="bubble-intro" class="card" style="max-width:520px;margin:0 auto 24px">
+            <div class="intro-icon">🫧</div>
+            <h2>버블 슈터</h2>
+            <p style="margin-bottom:16px">버블 속 단어를 타이핑하면 버블이 격파됩니다!</p>
+            <div
+                style="display:flex;flex-direction:column;gap:8px;margin-bottom:24px;text-align:left;background:var(--bg-primary);border-radius:var(--radius-sm);padding:16px">
+                <div style="font-size:0.88rem;color:var(--text-secondary)">⌨️ 단어를 입력하면 해당 버블로 발사</div>
+                <div style="font-size:0.88rem;color:var(--text-secondary)">🔗 같은 색 버블이 연결되면 연쇄 제거</div>
+                <div style="font-size:0.88rem;color:var(--text-secondary)">⏱️ 시간이 지날수록 버블이 더 빨리 내려옴</div>
+                <div style="font-size:0.88rem;color:var(--accent-red)">💀 버블이 위험선에 닿으면 게임 오버!</div>
+            </div>
+            <div style="display:flex;gap:12px;align-items:center;justify-content:center;margin-bottom:16px">
+                <label style="font-size:0.88rem;color:var(--text-secondary)">언어</label>
+                <div class="lang-toggle">
+                    <button class="lang-btn active" id="btn-lang-ko" onclick="setGameLang('ko')">한글</button>
+                    <button class="lang-btn" id="btn-lang-en" onclick="setGameLang('en')">English</button>
+                </div>
+            </div>
+            <button id="btn-game-start" class="btn-primary w-full" style="justify-content:center;font-size:1.1rem"
+                onclick="startGame()">
+                🎮 게임 시작
+            </button>
+        </div>
+
+        <!-- 게임 영역 (숨김) -->
+        <div id="bubble-game-area" class="hidden">
+            <div id="bubble-game-wrap">
+
+                <!-- 캔버스 -->
+                <div id="bubble-canvas-wrap">
+                    <canvas id="bubble-canvas"></canvas>
+                    <!-- 게임 오버 오버레이 -->
+                    <div id="overlay-gameover" class="bubble-overlay hidden">
+                        <h2 style="color:#FF4455">게임 오버 💀</h2>
+                        <p id="go-score-text"></p>
+                        <button class="btn-primary" onclick="restartGame()">다시 도전</button>
+                        <button class="btn-secondary" style="margin-top:8px" onclick="goIntro()">메뉴로</button>
+                    </div>
+                </div>
+
+                <!-- 사이드 패널 -->
+                <div id="bubble-side-panel">
+
+                    <!-- HUD -->
+                    <div class="bubble-hud-card">
+                        <h3>🎯 현황</h3>
+                        <div class="bubble-stat">
+                            <span class="label">점수</span>
+                            <span class="value" id="hud-score">0</span>
+                        </div>
+                        <div class="bubble-stat">
+                            <span class="label">레벨</span>
+                            <span class="value" id="hud-level">1</span>
+                        </div>
+                        <div class="bubble-stat">
+                            <span class="label">콤보</span>
+                            <span class="value" id="hud-combo" style="color:var(--accent-green)">0</span>
+                        </div>
+                        <div class="bubble-stat">
+                            <span class="label">속도</span>
+                            <span class="value" id="hud-speed" style="color:var(--accent-cyan)">보통</span>
+                        </div>
+                    </div>
+
+                    <!-- 입력 영역 -->
+                    <div class="bubble-hud-card">
+                        <h3>⌨️ 입력</h3>
+                        <div id="bubble-word-display"></div>
+                        <div id="bubble-input-wrap">
+                            <input type="text" id="bubble-input" placeholder="단어 입력..." autocomplete="off"
+                                autocorrect="off" autocapitalize="off" spellcheck="false">
+                        </div>
+                        <div style="margin-top:10px;font-size:0.75rem;color:var(--text-muted)">
+                            현재 화면 단어:
+                        </div>
+                        <div id="word-list" style="margin-top:6px;max-height:120px;overflow-y:auto"></div>
+                    </div>
+
+                    <!-- 미니게임 랭킹 -->
+                    <div class="bubble-hud-card">
+                        <h3>🏆 버블 랭킹</h3>
+                        <div id="bubble-ranking-wrap">
+                            <div style="color:var(--text-muted);font-size:0.82rem;text-align:center;padding:12px">
+                                로딩 중...
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script src="js/firebase-config.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/profile.js"></script>
+    <script src="js/content.js"></script>
+    <script src="js/bubble.js"></script>
+    <script>
+        let currentUser = null;
+        let userProfile = null;
+        let gameLang = 'ko';
+        let isGameActive = false;
+
+        // ── 인증 ──────────────────────────────────────────────
+        Auth.initAuthListener({
+            requireAuth: true,
+            onLogin: async (user) => {
+                currentUser = user;
+                const profile = await Profile.getProfile(user.uid);
+                if (!profile?.profileComplete) { location.href = '/profile.html'; return; }
+                userProfile = profile;
+                document.getElementById('nav-name').textContent = profile.name;
+                document.getElementById('nav-avatar').src = user.photoURL || '';
+                await Content.initializeDefaults();
+                loadBubbleRanking();
+            }
+        });
+
+        // ── 언어 선택 ─────────────────────────────────────────
+        function setGameLang(lang) {
+            gameLang = lang;
+            document.getElementById('btn-lang-ko').classList.toggle('active', lang === 'ko');
+            document.getElementById('btn-lang-en').classList.toggle('active', lang === 'en');
+        }
+
+        // ── 게임 시작 ─────────────────────────────────────────
+        async function startGame() {
+            const key = `words_${gameLang}`;
+            const items = await Content.getContent(key);
+            if (!items.length) { alert('단어 콘텐츠가 없습니다.'); return; }
+
+            isGameActive = true;
+            document.getElementById('bubble-intro').classList.add('hidden');
+            document.getElementById('bubble-game-area').classList.remove('hidden');
+            document.getElementById('overlay-gameover').classList.add('hidden');
+
+            // 점수 초기화
+            updateHUD({ score: 0, level: 1, combo: 0 });
+
+            BubbleGame.init(
+                document.getElementById('bubble-canvas'),
+                items,
+                {
+                    onUpdate: ({ score, level, combo }) => {
+                        updateHUD({ score, level, combo });
+                        refreshWordList();
+                    },
+                    onGameOver: ({ score, level }) => {
+                        isGameActive = false;
+                        document.getElementById('go-score-text').textContent =
+                            `점수: ${score.toLocaleString()}점  /  레벨 ${level}`;
+                        document.getElementById('overlay-gameover').classList.remove('hidden');
+                        saveBubbleScore(score, level);
+                    }
+                }
+            );
+
+            // 첫 단어 목록 표시
+            refreshWordList();
+            document.getElementById('bubble-input').focus();
+        }
+
+        function restartGame() { startGame(); }
+        function goIntro() {
+            BubbleGame.stop();
+            isGameActive = false;
+            document.getElementById('bubble-game-area').classList.add('hidden');
+            document.getElementById('bubble-intro').classList.remove('hidden');
+        }
+
+        // ── HUD 업데이트 ──────────────────────────────────────
+        function updateHUD({ score, level, combo }) {
+            document.getElementById('hud-score').textContent = (score || 0).toLocaleString();
+            document.getElementById('hud-level').textContent = level || 1;
+            document.getElementById('hud-combo').textContent = (combo || 0) + 'x';
+            const speeds = ['느림', '보통', '빠름', '매우빠름', '최고속'];
+            document.getElementById('hud-speed').textContent = speeds[Math.min((level || 1) - 1, 4)];
+        }
+
+        // 현재 화면 단어 목록 갱신
+        function refreshWordList() {
+            const words = BubbleGame.getLiveWords();
+            document.getElementById('word-list').innerHTML = words
+                .map(w => `<span class="next-word-badge">${w}</span>`).join('');
+        }
+
+        // ── 입력 처리 ─────────────────────────────────────────
+        const inputEl = document.getElementById('bubble-input');
+
+        inputEl.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                const val = inputEl.value.trim();
+                if (!val || !isGameActive) return;
+                const hit = BubbleGame.shoot(val);
+                inputEl.value = '';
+                BubbleGame.aim(''); // 발사 후 조준 초기화
+                inputEl.classList.remove('correct', 'wrong');
+                void inputEl.offsetWidth;
+                inputEl.classList.add(hit ? 'correct' : 'wrong');
+                setTimeout(() => inputEl.classList.remove('correct', 'wrong'), 300);
+                refreshWordList();
+            }
+        });
+
+        // 실시간 입력 힌트: aim() + 단어 목록 하이라이트
+        inputEl.addEventListener('input', () => {
+            if (!isGameActive) return;
+            const val = inputEl.value.trim();
+
+            // 포신 조준 업데이트
+            BubbleGame.aim(val);
+
+            // 단어 목록 하이라이트
+            const words = BubbleGame.getLiveWords();
+            document.getElementById('word-list').innerHTML = words.map(w => {
+                const exact = val && w === val;
+                const partial = val && !exact && w.startsWith(val);
+                const style = exact ? 'border-color:var(--accent-green);color:var(--accent-green);font-weight:900'
+                    : partial ? 'border-color:var(--accent-cyan);color:var(--accent-cyan);font-weight:700'
+                        : '';
+                return `<span class="next-word-badge" style="${style}">${w}</span>`;
+            }).join('');
+        });
+
+        // ── Firestore 랭킹 ────────────────────────────────────
+        async function saveBubbleScore(score, level) {
+            if (!currentUser || !userProfile) return;
+            try {
+                const ref = db.collection('bubbleRanking').doc(currentUser.uid);
+                const snap = await ref.get();
+                const prev = snap.exists ? (snap.data().bestScore || 0) : 0;
+                if (score > prev) {
+                    await ref.set({
+                        uid: currentUser.uid,
+                        name: userProfile.name,
+                        className: userProfile.className,
+                        bestScore: score,
+                        bestLevel: level,
+                        updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+                    }, { merge: true });
+                }
+                await loadBubbleRanking();
+            } catch (e) { console.error('버블 점수 저장 오류:', e); }
+        }
+
+        async function loadBubbleRanking() {
+            try {
+                const snap = await db.collection('bubbleRanking')
+                    .orderBy('bestScore', 'desc').limit(10).get();
+                const medals = ['🥇', '🥈', '🥉'];
+                const rows = snap.docs.map((d, i) => {
+                    const r = d.data();
+                    return `<tr>
+                        <td>${medals[i] || (i + 1)}</td>
+                        <td>${r.name}</td>
+                        <td>${r.className || ''}</td>
+                        <td><strong>${(r.bestScore || 0).toLocaleString()}</strong></td>
+                        <td>Lv.${r.bestLevel || 1}</td>
+                    </tr>`;
+                }).join('');
+                document.getElementById('bubble-ranking-wrap').innerHTML = rows.length
+                    ? `<table class="bubble-ranking-table">
+                        <thead><tr><th>#</th><th>이름</th><th>반</th><th>점수</th><th>레벨</th></tr></thead>
+                        <tbody>${rows}</tbody>
+                       </table>`
+                    : '<div style="color:var(--text-muted);font-size:0.82rem;text-align:center;padding:12px">아직 기록 없음</div>';
+            } catch (e) {
+                document.getElementById('bubble-ranking-wrap').innerHTML =
+                    '<div style="color:var(--text-muted);font-size:0.82rem;text-align:center;padding:12px">랭킹 로드 실패</div>';
+            }
+        }
+    </script>
+
+</body>
+
+</html>
