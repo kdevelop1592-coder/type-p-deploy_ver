@@ -5,8 +5,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>경덕중학교 타자마스터 — 관리자</title>
-    <link rel="stylesheet" href="css/main.css?v=1.2.1">
-    <link rel="stylesheet" href="css/typing.css?v=1.2.1">
+    <link rel="stylesheet" href="css/main.css?v=1.2.2">
+    <link rel="stylesheet" href="css/typing.css?v=1.2.2">
+    <link rel="stylesheet" href="css/keyboard.css?v=1.2.2">
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
@@ -22,7 +23,7 @@
                     style="width:32px;height:32px;border-radius:50%;vertical-align:middle;margin-right:8px">
                 경덕중학교 타자마스터 — 관리자
                 <span id="ui-version"
-                    style="font-size:0.65rem;color:var(--text-muted);margin-left:8px;font-family:monospace;opacity:0.6">v1.2.1</span>
+                    style="font-size:0.65rem;color:var(--text-muted);margin-left:8px;font-family:monospace;opacity:0.6">v1.2.2</span>
             </a>
             <div class="nav-user">
                 <a href="/app.html" class="btn-secondary" style="padding:8px 16px;font-size:0.85rem">← 연습 화면</a>
@@ -134,7 +135,35 @@
             </div>
         </div>
 
-        <!-- ── 탭 3: 콘텐츠 관리 ── -->
+        <!-- ── 탭 3: 키보드 설정 ── -->
+        <div id="panel-keyboard" class="hidden">
+            <div class="card" style="margin-bottom:20px">
+                <h3 style="font-size:1.1rem;font-weight:900;margin-bottom:12px">⌨️ 타자연습 손가락 위치 조정</h3>
+                <p style="font-size:0.85rem;color:var(--text-secondary);margin-bottom:20px">
+                    연습 화면의 손가락 위치를 마우스 드래그로 미세하게 조정할 수 있습니다.<br>
+                    (조정한 후 아래 <strong>[변경사항 저장]</strong> 버튼을 꼭 눌러주세요.)
+                </p>
+
+                <div id="admin-kb-container"
+                    style="background:var(--bg-card); padding:20px; border-radius:var(--radius-md); border:1px solid var(--border); overflow:hidden; position:relative;">
+                    <!-- KeyboardDisplay.render()가 여기에 렌더링됨 -->
+                    <div id="admin-kb-display"></div>
+                </div>
+
+                <div style="display:flex;gap:12px;margin-top:24px">
+                    <button class="btn-primary" onclick="saveKeyboardSettings()" style="flex:2;justify-content:center">✅
+                        변경사항 저장</button>
+                    <button class="btn-secondary" onclick="resetKeyboardSettings()"
+                        style="flex:1;justify-content:center">🔃 기본값으로 초기화</button>
+                </div>
+                <div id="kb-save-msg" class="hidden"
+                    style="margin-top:12px;padding:10px;background:rgba(0,136,255,0.1);border:1px solid var(--accent-cyan);border-radius:var(--radius-sm);color:var(--accent-cyan);font-size:0.85rem;text-align:center">
+                    💾 키보드 위치 설정이 저장되었습니다.
+                </div>
+            </div>
+        </div>
+
+        <!-- ── 탭 4: 콘텐츠 관리 ── -->
         <div id="panel-content" class="hidden">
             <!-- API 단어 수집 카드 -->
             <div class="card"
@@ -147,33 +176,6 @@
                 <button class="btn-primary" onclick="fetchEnglishWords()" id="btn-fetch-en">📥 영어 단어 수집</button>
             </div>
 
-            <!-- 키보드 설정 패널 -->
-            <div id="panel-keyboard" class="hidden">
-                <div class="card" style="margin-bottom:20px">
-                    <h3 style="font-size:1.1rem;font-weight:900;margin-bottom:12px">⌨️ 타자연습 손가락 위치 조정</h3>
-                    <p style="font-size:0.85rem;color:var(--text-secondary);margin-bottom:20px">
-                        연습 화면의 손가락 위치를 마우스 드래그로 미세하게 조정할 수 있습니다.<br>
-                        (조정한 후 아래 <strong>[변경사항 저장]</strong> 버튼을 꼭 눌러주세요.)
-                    </p>
-
-                    <div id="admin-kb-container"
-                        style="background:var(--bg-card); padding:20px; border-radius:var(--radius-md); border:1px solid var(--border); overflow:hidden; position:relative;">
-                        <!-- KeyboardDisplay.render()가 여기에 렌더링됨 -->
-                        <div id="admin-kb-display"></div>
-                    </div>
-
-                    <div style="display:flex;gap:12px;margin-top:24px">
-                        <button class="btn-primary" onclick="saveKeyboardSettings()"
-                            style="flex:2;justify-content:center">✅ 변경사항 저장</button>
-                        <button class="btn-secondary" onclick="resetKeyboardSettings()"
-                            style="flex:1;justify-content:center">🔃 기본값으로 초기화</button>
-                    </div>
-                    <div id="kb-save-msg" class="hidden"
-                        style="margin-top:12px;padding:10px;background:rgba(0,136,255,0.1);border:1px solid var(--accent-cyan);border-radius:var(--radius-sm);color:var(--accent-cyan);font-size:0.85rem;text-align:center">
-                        💾 키보드 위치 설정이 저장되었습니다.
-                    </div>
-                </div>
-            </div>
 
             <div class="card">
                 <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;flex-wrap:wrap">
