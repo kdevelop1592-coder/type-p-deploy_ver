@@ -49,6 +49,30 @@ const KeyboardDisplay = (() => {
     'qwertyuiopasdfghjklzxcvbnm'.split('').forEach(c => KEY_ID_MAP[c] = c);
     '`1234567890-=[]\\\';,./'.split('').forEach(c => KEY_ID_MAP[c] = c);
 
+    // 손가락 매핑 (키 -> 손가락 ID)
+    const FINGER_MAP = {
+        // Left Hand
+        '`': 'f-lp', '1': 'f-lp', 'q': 'f-lp', 'a': 'f-lp', 'z': 'f-lp', 'Tab': 'f-lp', 'Caps': 'f-lp', 'Shift': 'f-lp',
+        'ㅂ': 'f-lp', 'ㅃ': 'f-lp', 'ㅁ': 'f-lp', 'ㅋ': 'f-lp',
+        '2': 'f-lr', 'w': 'f-lr', 's': 'f-lr', 'x': 'f-lr',
+        'ㅈ': 'f-lr', 'ㅉ': 'f-lr', 'ㄴ': 'f-lr', 'ㅌ': 'f-lr',
+        '3': 'f-lm', 'e': 'f-lm', 'd': 'f-lm', 'c': 'f-lm',
+        'ㄷ': 'f-lm', 'ㄸ': 'f-lm', 'ㅇ': 'f-lm', 'ㅊ': 'f-lm',
+        '4': 'f-li', '5': 'f-li', 'r': 'f-li', 't': 'f-li', 'f': 'f-li', 'g': 'f-li', 'v': 'f-li', 'b': 'f-li',
+        'ㄱ': 'f-li', 'ㄲ': 'f-li', 'ㅅ': 'f-li', 'ㅆ': 'f-li', 'ㄹ': 'f-li', 'ㅎ': 'f-li', 'ㅍ': 'f-li', 'ㅠ': 'f-li',
+        // Right Hand
+        '6': 'f-ri', '7': 'f-ri', 'y': 'f-ri', 'u': 'f-ri', 'h': 'f-ri', 'j': 'f-ri', 'n': 'f-ri', 'm': 'f-ri',
+        'ㅛ': 'f-ri', 'ㅕ': 'f-ri', 'ㅗ': 'f-ri', 'ㅓ': 'f-ri', 'ㅜ': 'f-ri', 'ㅡ': 'f-ri',
+        '8': 'f-rm', 'i': 'f-rm', 'k': 'f-rm', ',': 'f-rm',
+        'ㅑ': 'f-rm', 'ㅏ': 'f-rm',
+        '9': 'f-rr', 'o': 'f-rr', 'l': 'f-rr', '.': 'f-rr',
+        'ㅐ': 'f-rr', 'ㅒ': 'f-rr', 'ㅣ': 'f-rr',
+        '0': 'f-rp', '-': 'f-rp', '=': 'f-rp', 'p': 'f-rp', '[': 'f-rp', ']': 'f-rp', '\\': 'f-rp', ';': 'f-rp', '\'': 'f-rp', '/': 'f-rp', 'Enter': 'f-rp', 'Shift↑': 'f-rp', 'Backspace': 'f-rp',
+        'ㅔ': 'f-rp', 'ㅖ': 'f-rp',
+        // Thumbs
+        'Space': 'f-rt'
+    };
+
     let container = null;
     let currentLang = 'en';
     let activeTimeout = null;
@@ -62,6 +86,7 @@ const KeyboardDisplay = (() => {
 
         el.innerHTML = '';
         el.className = 'keyboard-wrap';
+        el.style.position = 'relative';
 
         rows.forEach((row, ri) => {
             const rowEl = document.createElement('div');
@@ -75,6 +100,27 @@ const KeyboardDisplay = (() => {
             });
             el.appendChild(rowEl);
         });
+
+        // 손가락 오버레이 영역 추가
+        const hands = document.createElement('div');
+        hands.className = 'hand-overlay';
+        hands.innerHTML = `
+            <div class="hand left-hand">
+                <div class="finger f-lp" id="f-lp"></div>
+                <div class="finger f-lr" id="f-lr"></div>
+                <div class="finger f-lm" id="f-lm"></div>
+                <div class="finger f-li" id="f-li"></div>
+                <div class="finger f-lt" id="f-lt"></div>
+            </div>
+            <div class="hand right-hand">
+                <div class="finger f-rt" id="f-rt"></div>
+                <div class="finger f-ri" id="f-ri"></div>
+                <div class="finger f-rm" id="f-rm"></div>
+                <div class="finger f-rr" id="f-rr"></div>
+                <div class="finger f-rp" id="f-rp"></div>
+            </div>
+        `;
+        el.appendChild(hands);
     }
 
     // ── 키 피드백 ─────────────────────────────────────────
@@ -107,8 +153,6 @@ const KeyboardDisplay = (() => {
             void el.offsetWidth;
             el.classList.add(correct ? 'key-correct' : 'key-error');
 
-            // Set timeout for the specific key element instead of a global setTimeout
-            // to allow multiple keys to be highlighted simultaneously
             if (el.dataset.activeTimeout) {
                 clearTimeout(parseInt(el.dataset.activeTimeout));
             }
@@ -117,39 +161,79 @@ const KeyboardDisplay = (() => {
                 delete el.dataset.activeTimeout;
             }, 180);
             el.dataset.activeTimeout = timeoutId;
+
+            // 손가락 오버레이 애니메이션 적용
+            const fingerId = FINGER_MAP[displayKey];
+            if (fingerId) {
+                const fel = container.querySelector('#' + fingerId);
+                if (fel) {
+                    fel.classList.remove('active', 'error');
+                    void fel.offsetWidth;
+                    fel.classList.add(correct ? 'active' : 'error');
+
+                    if (fel.dataset.activeTimeout) clearTimeout(parseInt(fel.dataset.activeTimeout));
+                    fel.dataset.activeTimeout = setTimeout(() => {
+                        fel.classList.remove('active', 'error');
+                    }, 180);
+                }
+            }
+
         } catch (e) {
             console.error('Invalid selector for key feedback:', displayKey, e);
         }
     }
 
-    // 다음에 눌러야 할 키 안내 (파란 테두리)
+    // 다음에 눌러야 할 키 안내 (파란 테두리 + 손가락 힌트)
     function highlightNext(char) {
         if (!container) return;
         // 기존 힌트 제거
         container.querySelectorAll('.key-hint').forEach(e => e.classList.remove('key-hint'));
+        container.querySelectorAll('.finger.hint').forEach(e => e.classList.remove('hint'));
         if (!char) return;
 
-        const rows = currentLang === 'ko' ? KO_ROWS : EN_ROWS;
         let found = false;
+        const markHint = (key) => {
+            let escapedKey = key;
+            if (key === '\\') escapedKey = '\\\\';
+            if (key === "'") escapedKey = "\\'";
+            if (key === '"') escapedKey = '\\"';
+
+            try {
+                const el = container.querySelector(`[data-key="${escapedKey}"]`);
+                if (el && !found) {
+                    el.classList.add('key-hint');
+                    found = true;
+                    const fingerId = FINGER_MAP[key];
+                    if (fingerId) {
+                        const fel = container.querySelector('#' + fingerId);
+                        if (fel) fel.classList.add('hint');
+                    }
+                }
+            } catch (e) { }
+        };
+
+        const rows = currentLang === 'ko' ? KO_ROWS : EN_ROWS;
         rows.forEach(row => {
             row.forEach(key => {
                 if (currentLang === 'ko') {
                     // 한글 문자를 KO_MAP 역방향으로 찾기
                     const match = Object.entries(KO_MAP).find(([k, v]) => v === char);
-                    if (match && key === match[1]) {
-                        const el = container.querySelector(`[data-key="${key}"]`);
-                        if (el && !found) { el.classList.add('key-hint'); found = true; }
-                    }
+                    if (match && key === match[1]) markHint(key);
                 }
                 // 영문 직접 매핑
-                if (key.toLowerCase() === char.toLowerCase()) {
-                    const el = container.querySelector(`[data-key="${key}"]`);
-                    if (el && !found) { el.classList.add('key-hint'); found = true; }
-                }
+                if (key.toLowerCase() === char.toLowerCase()) markHint(key);
                 // Space
                 if (char === ' ' && key === 'Space') {
                     const el = container.querySelector(`[data-key="Space"]`);
-                    if (el && !found) { el.classList.add('key-hint'); found = true; }
+                    if (el && !found) {
+                        el.classList.add('key-hint');
+                        found = true;
+                        const fingerId = FINGER_MAP['Space'];
+                        if (fingerId) {
+                            const fel = container.querySelector('#' + fingerId);
+                            if (fel) fel.classList.add('hint');
+                        }
+                    }
                 }
             });
         });
@@ -165,6 +249,9 @@ const KeyboardDisplay = (() => {
         if (!container) return;
         container.querySelectorAll('.kb-key').forEach(el => {
             el.classList.remove('key-correct', 'key-error', 'key-hint');
+        });
+        container.querySelectorAll('.finger').forEach(el => {
+            el.classList.remove('active', 'error', 'hint');
         });
     }
 

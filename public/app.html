@@ -97,6 +97,134 @@
                 box-shadow: 0 0 20px rgba(0, 212, 255, 0.9);
             }
         }
+
+        /* ── 손가락 오버레이 스타일 ── */
+        .hand-overlay {
+            position: absolute;
+            left: 0;
+            right: 0;
+            bottom: 8px;
+            /* 키보드 하단에 걸치도록 */
+            display: flex;
+            justify-content: center;
+            align-items: flex-end;
+            gap: 20px;
+            pointer-events: none;
+            /* 클릭 방해 금지 */
+            opacity: 0.7;
+            z-index: 10;
+        }
+
+        .hand {
+            display: flex;
+            align-items: flex-end;
+            gap: 4px;
+            position: relative;
+        }
+
+        .finger {
+            width: 26px;
+            background: rgba(255, 255, 255, 0.2);
+            border: 2px solid rgba(255, 255, 255, 0.4);
+            border-radius: 13px 13px 4px 4px;
+            transition: all 0.15s ease;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+        }
+
+        /* 손가락별 높이 조절 */
+        .f-lp,
+        .f-rp {
+            height: 45px;
+        }
+
+        /* 새끼 */
+        .f-lr,
+        .f-rr {
+            height: 60px;
+        }
+
+        /* 약지 */
+        .f-lm,
+        .f-rm {
+            height: 70px;
+        }
+
+        /* 중지 */
+        .f-li,
+        .f-ri {
+            height: 55px;
+        }
+
+        /* 검지 */
+
+        /* 엄지손가락 (Space용, 약간 꺾어줌) */
+        .f-lt {
+            height: 35px;
+            transform: rotate(-25deg);
+            transform-origin: bottom right;
+            margin-left: 14px;
+        }
+
+        .f-rt {
+            height: 35px;
+            transform: rotate(25deg);
+            transform-origin: bottom left;
+            margin-right: 14px;
+        }
+
+        /* 활성화 상태 (누를 때) */
+        .finger.active {
+            background: rgba(0, 212, 255, 0.6);
+            border-color: var(--accent-cyan);
+            box-shadow: 0 0 15px rgba(0, 212, 255, 0.8);
+            transform: translateY(4px);
+            /* 눌리는 느낌 */
+        }
+
+        .finger.active.f-lt {
+            transform: rotate(-25deg) translateY(4px);
+        }
+
+        .finger.active.f-rt {
+            transform: rotate(25deg) translateY(4px);
+        }
+
+        .finger.error {
+            background: rgba(255, 68, 68, 0.6);
+            border-color: var(--accent-red);
+            box-shadow: 0 0 15px rgba(255, 68, 68, 0.8);
+            transform: translateY(4px);
+        }
+
+        .finger.error.f-lt {
+            transform: rotate(-25deg) translateY(4px);
+        }
+
+        .finger.error.f-rt {
+            transform: rotate(25deg) translateY(4px);
+        }
+
+        /* 다음 쳐야 할 손가락 (힌트) */
+        .finger.hint {
+            border-color: var(--accent-green);
+            background: rgba(0, 255, 136, 0.3);
+            box-shadow: 0 0 15px rgba(0, 255, 136, 0.5);
+            animation: fingerPulse 1s ease infinite;
+        }
+
+        @keyframes fingerPulse {
+
+            0%,
+            100% {
+                box-shadow: 0 0 10px rgba(0, 255, 136, 0.4);
+                border-color: rgba(0, 255, 136, 0.5);
+            }
+
+            50% {
+                box-shadow: 0 0 20px rgba(0, 255, 136, 0.9);
+                border-color: rgba(0, 255, 136, 1);
+            }
+        }
     </style>
 </head>
 

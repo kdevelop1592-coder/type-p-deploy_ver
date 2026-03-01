@@ -18,8 +18,8 @@ const Game = (() => {
     const BADGES = [
         { id: 'first_session', name: '첫 연습', desc: '첫 번째 연습 완료', icon: '🎯' },
         { id: 'streak_7', name: '7일 연속', desc: '7일 연속 연습', icon: '🔥' },
-        { id: 'wpm_100', name: 'WPM 100', desc: 'WPM 100 달성', icon: '⚡' },
-        { id: 'wpm_200', name: 'WPM 200', desc: 'WPM 200 달성', icon: '🚀' },
+        { id: 'wpm_100', name: '100 타수', desc: '100 타수 달성', icon: '⚡' },
+        { id: 'wpm_200', name: '200 타수', desc: '200 타수 달성', icon: '🚀' },
         { id: 'accuracy_99', name: '정확도 99%', desc: '정확도 99% 달성', icon: '🎖️' },
         { id: 'keys_10000', name: '1만 타', desc: '누적 1만 타 달성', icon: '💎' },
         { id: 'keys_100000', name: '10만 타', desc: '누적 10만 타 달성', icon: '👑' },

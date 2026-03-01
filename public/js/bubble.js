@@ -210,9 +210,10 @@ const BubbleGame = (() => {
         if (lastWordTime === 0) lastWordTime = startTime;
         const timeDiffSec = (now - lastWordTime) / 1000;
 
-        // 현재 단어 WPM (1글자 = 1타격 가정, 분당 타수)
+        // 현재 단어 WPM (한글 1글자 = 2.5타격 가정, 분당 타수)
         if (timeDiffSec > 0) {
-            lastWordWpm = Math.round((wordLen / timeDiffSec) * 60);
+            const strokes = (typeof gameLang !== 'undefined' && gameLang === 'en') ? wordLen : wordLen * 2.5;
+            lastWordWpm = Math.round((strokes / timeDiffSec) * 60);
             if (lastWordWpm > maxWpm) maxWpm = lastWordWpm;
         }
         lastWordTime = now;
@@ -382,7 +383,8 @@ const BubbleGame = (() => {
             const bx = b.x - sx, by = b.y - sy;
             const t = Math.max(0, Math.min(len, bx * ux + by * uy));
             const cx = sx + t * ux, cy = sy + t * uy;
-            if (Math.hypot(b.x - cx, b.y - cy) < BUBBLE_R * 1.7) return false;
+            // 실제 충돌 판정 거리(BUBBLE_R * 2 - 4)보다 약간 더 넉넉하게 회피 (BUBBLE_R * 2 - 2)
+            if (Math.hypot(b.x - cx, b.y - cy) < BUBBLE_R * 2 - 2) return false;
         }
         return true;
     }
@@ -395,11 +397,11 @@ const BubbleGame = (() => {
         // 중심뿐만 아니라 좌우 뺨(offset)을 노려 장애물을 피하는 궤적 탐색
         const offsets = [0, -12, 12, -24, 24, -36, 36, -46, 46];
 
+        // 1. 모든 오프셋에 대해 "직선 경로"를 먼저 전부 시도 (직사 궤적 우선)
         for (const offX of offsets) {
             const fakeTx = target.x + offX;
             const fakeTy = target.y;
 
-            // 1. 직선
             if (isSegmentClear(sx, sy, fakeTx, fakeTy, excl)) {
                 const d = Math.hypot(fakeTx - sx, fakeTy - sy);
                 return {
@@ -407,34 +409,40 @@ const BubbleGame = (() => {
                     vy: (fakeTy - sy) / d * PROJ_SPEED, bouncePoint: null
                 };
             }
+        }
 
-            // 벽 반사 시도 헬퍼 — 1구간 + 2구간 모두 통과해야 반환
-            function tryWall(wallX) {
-                const rtx = 2 * wallX - fakeTx;
-                const d = Math.hypot(rtx - sx, fakeTy - sy);
-                if (d === 0) return null;
-                const bpY = sy + (wallX - sx) / (rtx - sx) * (fakeTy - sy);
-                if (bpY <= -BUBBLE_R || bpY >= sy) return null;
-                // 1구간: 포신 → 반사점
-                if (!isSegmentClear(sx, sy, wallX, bpY, excl)) return null;
-                // 2구간: 반사점 → 타겟 (실제로 맞출 수 있는지 확인)
-                if (!isSegmentClear(wallX, bpY, fakeTx, fakeTy, excl)) return null;
-                return {
-                    vx: (rtx - sx) / d * PROJ_SPEED,
-                    vy: (fakeTy - sy) / d * PROJ_SPEED,
-                    bouncePoint: { x: wallX, y: bpY }
-                };
-            }
+        // 벽 반사 시도 헬퍼 — 1구간 + 2구간 모두 통과해야 반환
+        function tryWall(wallX, fakeTx, fakeTy) {
+            const rtx = 2 * wallX - fakeTx;
+            const d = Math.hypot(rtx - sx, fakeTy - sy);
+            if (d === 0) return null;
+            const bpY = sy + (wallX - sx) / (rtx - sx) * (fakeTy - sy);
+            if (bpY <= -BUBBLE_R || bpY >= sy) return null;
+            // 1구간: 포신 → 반사점
+            if (!isSegmentClear(sx, sy, wallX, bpY, excl)) return null;
+            // 2구간: 반사점 → 타겟
+            if (!isSegmentClear(wallX, bpY, fakeTx, fakeTy, excl)) return null;
+            return {
+                vx: (rtx - sx) / d * PROJ_SPEED,
+                vy: (fakeTy - sy) / d * PROJ_SPEED,
+                bouncePoint: { x: wallX, y: bpY }
+            };
+        }
 
-            const wallL = BUBBLE_R;
-            const wallR = CANVAS_W - BUBBLE_R;
+        const wallL = BUBBLE_R;
+        const wallR = CANVAS_W - BUBBLE_R;
+
+        // 2. 직선 경로가 모두 막혔다면, 각 오프셋에 대해 "반사 경로" 탐색
+        for (const offX of offsets) {
+            const fakeTx = target.x + offX;
+            const fakeTy = target.y;
 
             let bounce = null;
             // 타겟 위치에 따라 반대 벽 우선
             if (fakeTx < sx) {
-                bounce = tryWall(wallR) ?? tryWall(wallL) ?? null;
+                bounce = tryWall(wallR, fakeTx, fakeTy) ?? tryWall(wallL, fakeTx, fakeTy) ?? null;
             } else {
-                bounce = tryWall(wallL) ?? tryWall(wallR) ?? null;
+                bounce = tryWall(wallL, fakeTx, fakeTy) ?? tryWall(wallR, fakeTx, fakeTy) ?? null;
             }
             if (bounce) return bounce;
         }
@@ -596,7 +604,8 @@ const BubbleGame = (() => {
         let avgWpm = 0;
         if (startTime > 0) {
             const totalElapsedSec = (Date.now() - startTime) / 1000;
-            if (totalElapsedSec > 0) avgWpm = Math.round((totalCharsTyped / totalElapsedSec) * 60);
+            const totalStrokes = (typeof gameLang !== 'undefined' && gameLang === 'en') ? totalCharsTyped : totalCharsTyped * 2.5;
+            if (totalElapsedSec > 0) avgWpm = Math.round((totalStrokes / totalElapsedSec) * 60);
         }
         if (cb.onUpdate) cb.onUpdate({ score, level, combo, wpm: { current: lastWordWpm, avg: avgWpm, max: maxWpm }, ...extra });
     }
