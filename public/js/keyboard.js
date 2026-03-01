@@ -142,7 +142,7 @@ const KeyboardDisplay = (() => {
                 const pos = options.customPositions[fel.id];
                 if (pos && (pos.x !== 0 || pos.y !== 0)) {
                     // 자연스러운 flex 위치에서 translate로 이동
-                    let transform = `translate(${pos.x}px, ${-pos.y}px)`;
+                    let transform = `translate(${pos.x}px, ${pos.y}px)`;
                     if (fel.id === 'f-lt') transform += ' rotate(70deg)';
                     if (fel.id === 'f-rt') transform += ' rotate(-70deg)';
                     fel.style.transform = transform;
