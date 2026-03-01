@@ -273,10 +273,24 @@
           <td>${(s.totalKeystrokes || 0).toLocaleString()} 타</td>
           <td>${s.joinedAt ? new Date(s.joinedAt.toDate()).toLocaleDateString('ko-KR') : '-'}</td>
           <td>
+            <button class="btn-icon" onclick="resetSecondaryPassword('${s.id}', '${s.name}')" title="비밀번호 초기화">🔑</button>
             <button class="btn-icon" onclick="openEditModal('${s.id}','${s.name}','${s.className}')" title="수정">✏️</button>
           </td>
         </tr>
       `).join('');
+        }
+
+        async function resetSecondaryPassword(uid, name) {
+            if (!confirm(`'${name}' 학생의 2차 비밀번호를 초기화하시겠습니까?\n초기화 후 학생이 다시 로그인할 때 새 비밀번호를 설정하게 됩니다.`)) return;
+            try {
+                await db.collection('users').doc(uid).update({
+                    secondaryPassword: firebase.firestore.FieldValue.delete()
+                });
+                showToast(`✅ ${name} 학생의 비밀번호가 올바르게 초기화되었습니다.`, 'success');
+            } catch (error) {
+                console.error('비밀번호 초기화 실패:', error);
+                alert('초기화 중 오류가 발생했습니다.');
+            }
         }
 
         // ── 학생 수정 모달 ───────────────────

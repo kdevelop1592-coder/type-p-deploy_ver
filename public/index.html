@@ -26,7 +26,7 @@
       </div>
 
       <!-- 로그인 카드 -->
-      <div class="card login-card">
+      <div id="card-google-login" class="card login-card">
         <h2 class="login-heading">시작하기</h2>
         <p class="login-desc">Google 계정으로 로그인하면<br>바로 연습을 시작할 수 있어요!</p>
 
@@ -45,6 +45,33 @@
         </button>
 
         <div id="login-error" class="login-error hidden"></div>
+      </div>
+
+      <!-- 2차 비밀번호 설정 카드 -->
+      <div id="card-pw-setup" class="card login-card hidden">
+        <h2 class="login-heading">비밀번호 설정</h2>
+        <p class="login-desc" style="margin-bottom:16px;">안전한 연습을 위해<br>나만의 2차 비밀번호를 설정해주세요.</p>
+        <div class="form-group" style="text-align:left; margin-bottom:16px;">
+          <input type="password" id="input-pw-setup" class="input-field" placeholder="새 비밀번호 (4자리 이상) 입력"
+            maxlength="20">
+        </div>
+        <button id="btn-pw-setup" class="btn-primary" style="width:100%; justify-content:center;">설정 완료</button>
+        <button class="btn-secondary" style="width:100%; justify-content:center; margin-top:8px;"
+          onclick="cancelLogin()">취소</button>
+        <div id="pw-setup-error" class="login-error hidden"></div>
+      </div>
+
+      <!-- 2차 비밀번호 입력 카드 -->
+      <div id="card-pw-verify" class="card login-card hidden">
+        <h2 class="login-heading">비밀번호 확인</h2>
+        <p class="login-desc" style="margin-bottom:16px;">본인 확인을 위해<br>설정한 2차 비밀번호를 입력해주세요.</p>
+        <div class="form-group" style="text-align:left; margin-bottom:16px;">
+          <input type="password" id="input-pw-verify" class="input-field" placeholder="비밀번호 입력">
+        </div>
+        <button id="btn-pw-verify" class="btn-primary" style="width:100%; justify-content:center;">확인</button>
+        <button class="btn-secondary" style="width:100%; justify-content:center; margin-top:8px;"
+          onclick="cancelLogin()">취소</button>
+        <div id="pw-verify-error" class="login-error hidden"></div>
       </div>
 
       <!-- 특징 소개 -->
@@ -89,14 +116,44 @@
     Auth.clearFreshLogin();
 
     let _signingOut = true; // signOut 중에는 onLogin 무시
+    let _currentUser = null;
+    let _hasProfile = false;
+    let _dbSecondaryPassword = null;
+
+    // 로그인 진행 취소
+    async function cancelLogin() {
+      Auth.clearFreshLogin();
+      await auth.signOut();
+      window.location.reload();
+    }
 
     // ② 리스너 먼저 등록
     Auth.initAuthListener({
       onLogin: async (user) => {
         if (_signingOut) return;          // signOut 처리 중이면 무시
-        Auth.markFreshLogin();
-        const hasProfile = await Auth.checkProfile(user.uid);
-        window.location.href = hasProfile ? '/app.html' : '/profile.html';
+        _currentUser = user;
+
+        // Firestore에서 유저 정보 확인
+        const userDoc = await db.collection('users').doc(user.uid).get();
+        _hasProfile = userDoc.exists && userDoc.data().profileComplete === true;
+
+        let secondaryPw = null;
+        if (userDoc.exists) {
+          secondaryPw = userDoc.data().secondaryPassword;
+        }
+
+        document.getElementById('card-google-login').classList.add('hidden');
+
+        if (secondaryPw) {
+          // 비밀번호가 이미 설정된 경우
+          _dbSecondaryPassword = secondaryPw;
+          document.getElementById('card-pw-verify').classList.remove('hidden');
+          setTimeout(() => document.getElementById('input-pw-verify').focus(), 100);
+        } else {
+          // 비밀번호가 설정되지 않은 경우
+          document.getElementById('card-pw-setup').classList.remove('hidden');
+          setTimeout(() => document.getElementById('input-pw-setup').focus(), 100);
+        }
       }
     });
 
@@ -109,8 +166,68 @@
       btn.disabled = true;
       btn.textContent = '로그인 중...';
       await Auth.signIn();
-      btn.disabled = false;
-      btn.innerHTML = `<svg viewBox="0 0 48 48" width="22" height="22">...</svg> Google로 로그인`;
+      // 에러가 나거나 팝업 취소될 경우를 대비해 일정 시간 후 버튼 복구
+      setTimeout(() => {
+        btn.disabled = false;
+        btn.innerHTML = `<svg viewBox="0 0 48 48" width="22" height="22">...</svg> Google로 로그인`;
+      }, 3000);
+    });
+
+    // ⑤ 2차 비밀번호 확인 버튼
+    document.getElementById('btn-pw-verify').addEventListener('click', () => {
+      const inputPw = document.getElementById('input-pw-verify').value;
+      const errEl = document.getElementById('pw-verify-error');
+
+      if (inputPw === _dbSecondaryPassword) {
+        errEl.classList.add('hidden');
+        Auth.markFreshLogin();
+        window.location.href = _hasProfile ? '/app.html' : '/profile.html';
+      } else {
+        errEl.textContent = '비밀번호가 일치하지 않습니다.';
+        errEl.classList.remove('hidden');
+      }
+    });
+
+    // 비밀번호 입력창에서 엔터 시 전송
+    document.getElementById('input-pw-verify').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') document.getElementById('btn-pw-verify').click();
+    });
+
+    // ⑥ 2차 비밀번호 설정 버튼
+    document.getElementById('btn-pw-setup').addEventListener('click', async () => {
+      const inputPw = document.getElementById('input-pw-setup').value.trim();
+      const errEl = document.getElementById('pw-setup-error');
+      const btn = document.getElementById('btn-pw-setup');
+
+      if (!inputPw || inputPw.length < 4) {
+        errEl.textContent = '비밀번호는 최소 4자리 이상이어야 합니다.';
+        errEl.classList.remove('hidden');
+        return;
+      }
+
+      try {
+        errEl.classList.add('hidden');
+        btn.disabled = true;
+        btn.textContent = '저장 중...';
+
+        // 기존 문서가 없을 수도 있으니 merge: true 방식으로 Set
+        await db.collection('users').doc(_currentUser.uid).set({
+          secondaryPassword: inputPw
+        }, { merge: true });
+
+        Auth.markFreshLogin();
+        window.location.href = _hasProfile ? '/app.html' : '/profile.html';
+      } catch (e) {
+        errEl.textContent = '오류가 발생했습니다. 다시 시도해주세요.';
+        errEl.classList.remove('hidden');
+        btn.disabled = false;
+        btn.textContent = '설정 완료';
+      }
+    });
+
+    // 설정 입력창에서 엔터 시 전송
+    document.getElementById('input-pw-setup').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') document.getElementById('btn-pw-setup').click();
     });
   </script>
 

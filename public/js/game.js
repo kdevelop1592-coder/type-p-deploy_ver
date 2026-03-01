@@ -94,16 +94,20 @@ const Game = (() => {
         <h2 class="result-title">연습 완료!</h2>
         <div class="result-stats">
           <div class="stat-item">
-            <span class="stat-label">타속 (WPM)</span>
-            <span class="stat-value">${result.wpm}</span>
+            <span class="stat-label">최고 타수 (CPM)</span>
+            <span class="stat-value" style="color:var(--accent-purple)">${result.maxWpm || result.wpm}</span>
           </div>
           <div class="stat-item">
-            <span class="stat-label">타수 (CPM)</span>
-            <span class="stat-value">${result.cpm}</span>
+            <span class="stat-label">평균 타수 (CPM)</span>
+            <span class="stat-value" style="color:var(--accent-cyan)">${result.wpm}</span>
+          </div>
+          <div class="stat-item">
+            <span class="stat-label">오타 비율</span>
+            <span class="stat-value" style="color:var(--accent-red)">${result.errorRatio || 0}%</span>
           </div>
           <div class="stat-item">
             <span class="stat-label">정확도</span>
-            <span class="stat-value">${result.accuracy}%</span>
+            <span class="stat-value" style="color:var(--accent-green)">${result.accuracy}%</span>
           </div>
           <div class="stat-item">
             <span class="stat-label">시간</span>

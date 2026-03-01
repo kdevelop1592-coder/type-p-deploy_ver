@@ -83,16 +83,43 @@ const KeyboardDisplay = (() => {
     function pressKey(keyId, correct = true) {
         if (!container) return;
         // code → 화면 key 문자 변환
-        const displayKey = KEY_ID_MAP[keyId] || keyId;
-        const el = container.querySelector(`[data-key="${displayKey}"]`);
-        if (!el) return;
+        let displayKey = KEY_ID_MAP[keyId] || keyId;
 
-        el.classList.remove('key-correct', 'key-error');
-        el.classList.add(correct ? 'key-correct' : 'key-error');
-        clearTimeout(activeTimeout);
-        activeTimeout = setTimeout(() => {
+        // 한글 모드일 때 영문 keyId를 한글 문자로 변환
+        if (currentLang === 'ko' && KO_MAP[displayKey]) {
+            displayKey = KO_MAP[displayKey];
+        } else if (currentLang === 'ko' && KO_MAP[displayKey.toLowerCase()]) { // 'A' (Shift+A) -> 'ㅁ' 등으로 떨어질 경우의 대비 (하지만 KO_MAP 대문자는 쌍자음 지원)
+            displayKey = KO_MAP[displayKey];
+        }
+
+        // 따옴표나 백슬래시 등의 특수문자 대응
+        let escapedKey = displayKey;
+        if (displayKey === '\\') escapedKey = '\\\\';
+        if (displayKey === "'") escapedKey = "\\'";
+        if (displayKey === '"') escapedKey = '\\"';
+
+        try {
+            const el = container.querySelector(`[data-key="${escapedKey}"]`);
+            if (!el) return;
+
             el.classList.remove('key-correct', 'key-error');
-        }, 180);
+            // reflow를 강제로 발생시켜 짧은 시간에 연속으로 같은 키를 누를 때 애니메이션 초기화
+            void el.offsetWidth;
+            el.classList.add(correct ? 'key-correct' : 'key-error');
+
+            // Set timeout for the specific key element instead of a global setTimeout
+            // to allow multiple keys to be highlighted simultaneously
+            if (el.dataset.activeTimeout) {
+                clearTimeout(parseInt(el.dataset.activeTimeout));
+            }
+            const timeoutId = setTimeout(() => {
+                el.classList.remove('key-correct', 'key-error');
+                delete el.dataset.activeTimeout;
+            }, 180);
+            el.dataset.activeTimeout = timeoutId;
+        } catch (e) {
+            console.error('Invalid selector for key feedback:', displayKey, e);
+        }
     }
 
     // 다음에 눌러야 할 키 안내 (파란 테두리)

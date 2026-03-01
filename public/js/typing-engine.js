@@ -24,6 +24,7 @@ const TypingEngine = (() => {
             endTime: null,
             errors: 0,
             totalTyped: 0,
+            maxWpm: 0,
             isRunning: false,
             mode, lang, onComplete, onUpdate
         };
@@ -56,6 +57,11 @@ const TypingEngine = (() => {
         const elapsed = state.startTime ? (Date.now() - state.startTime) / 1000 : 0;
         const wpm = calcWPM(value.length - state.errors, elapsed, state.lang);
         const accuracy = calcAccuracy(value.length, state.errors);
+
+        // 최고 속도 기록
+        if (wpm > state.maxWpm) {
+            state.maxWpm = wpm;
+        }
 
         if (statsEl && state.onUpdate) {
             state.onUpdate({ wpm, accuracy, elapsed: Math.floor(elapsed) });
@@ -103,17 +109,12 @@ const TypingEngine = (() => {
         displayEl.innerHTML = html;
     }
 
-    // WPM 계산 (한글: 타수/분 기준 조정, 영문: 단어/분)
+    // WPM 계산 (기존 방식 대신 한컴타자연습 기준 '분당 타수'로 변경)
+    // 변수명은 호환성을 위해 wpm을 유지하지만 실제 값은 CPM입니다.
     function calcWPM(correctChars, elapsedSec, lang) {
         if (elapsedSec < 1) return 0;
-        const minutes = elapsedSec / 60;
-        if (lang === 'ko') {
-            // 한글 WPM: 분당 타수 / 5 (평균 단어 길이)
-            return Math.round((correctChars / 5) / minutes);
-        } else {
-            // 영문 WPM: correctChars / 5 / minutes
-            return Math.round((correctChars / 5) / minutes);
-        }
+        // 1분당 타격 수 (CPM)
+        return Math.round((correctChars / elapsedSec) * 60);
     }
 
     // CPM 계산 (분당 타수)
@@ -135,12 +136,16 @@ const TypingEngine = (() => {
         state.isRunning = false;
 
         const correctChars = totalTyped - errors;
+        const errorRatio = totalTyped > 0 ? ((errors / totalTyped) * 100).toFixed(1) : "0.0";
+
         const result = {
             mode: state.mode,
             lang: state.lang,
             wpm: calcWPM(correctChars, elapsed, state.lang),
+            maxWpm: state.maxWpm,
             cpm: calcCPM(correctChars, elapsed),
             accuracy: calcAccuracy(totalTyped, errors),
+            errorRatio: parseFloat(errorRatio),
             duration: Math.floor(elapsed),
             keystrokes: totalTyped,
             errors,
