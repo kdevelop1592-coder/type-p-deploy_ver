@@ -372,77 +372,107 @@ const BubbleGame = (() => {
     }
 
     // ── 충돌 가능 경로 탐색 ────────────────────────────────────
-    // 선분 (sx,sy)→(tx,ty)가 excluding 제외한 버블과 충돌하는지 체크
-    function isSegmentClear(sx, sy, tx, ty, excluding) {
+    // 선분 (sx,sy)→(tx,ty)가 excluding 제외한 버블과 충돌하는지 체크하고,
+    // 가장 가까운 장애물과의 '여유 간격(여유도)'을 반환합니다.
+    // -1: 충돌 (절대 통과 불가)
+    // 그 외 양수: 가장 가까운 장애물 중심과의 거리 (클수록 안전함)
+    function getSegmentClearance(sx, sy, tx, ty, excluding) {
+        let minClearance = Infinity;
         const dx = tx - sx, dy = ty - sy;
         const len = Math.hypot(dx, dy);
-        if (len === 0) return true;
+        if (len === 0) return Infinity; // 길이가 0이면 통과
         const ux = dx / len, uy = dy / len;
+
         for (const b of bubbles) {
             if (!b.alive || excluding.has(b)) continue;
             const bx = b.x - sx, by = b.y - sy;
+            // 선분에 투영된 길이를 구하고, 선분 밖이면 양끝점 거리 사용
             const t = Math.max(0, Math.min(len, bx * ux + by * uy));
             const cx = sx + t * ux, cy = sy + t * uy;
-            // 실제 충돌 판정 거리(BUBBLE_R * 2 - 4)보다 약간 더 넉넉하게 회피하면서 
-            // 시각적으로 튕겨볼 만한 좁은 틈새도 시도하도록 여유(BUBBLE_R * 1.6)를 둡니다.
-            if (Math.hypot(b.x - cx, b.y - cy) < BUBBLE_R * 1.6) return false;
+            const dist = Math.hypot(b.x - cx, b.y - cy);
+
+            // 물리적인 절대 충돌 반경(BUBBLE_R * 2 - 4 = 약 52).
+            // 이것보다 작으면 무조건 물리 엔진에서 충돌함. 
+            // 시각적 오차 및 육각 그리드의 빡빡함을 고려하여 1.6 정도를 최소 컷오프로 남겨둠
+            if (dist < BUBBLE_R * 1.6) return -1;
+
+            if (dist < minClearance) minClearance = dist;
         }
-        return true;
+        return minClearance;
     }
 
-    // 직선 또는 벽 반사 경로 탐색 (스마트 벽 선택 + 2구간 완전 도달 체크)
+    // 직선 또는 벽 반사 경로 탐색 (안전 점수 기반으로 최적 경로 도출)
     // 반환: { vx, vy, bouncePoint } 또는 null (모든 경로 불가)
     function findShotPath(sx, sy, target) {
         const excl = new Set([target]);
 
-        // 타겟의 너비를 촘촘하게 스윕 (모든 가능한 접점 확인)
+        let bestPath = null;
+        let maxClearance = -1;
+
+        // 가능한 경로 객체와 안전 점수를 받아서 최고 점수 갱신
+        function considerPath(pathObj, clearance) {
+            if (clearance > maxClearance) {
+                maxClearance = clearance;
+                bestPath = pathObj;
+            }
+        }
+
+        // 1. 직선 경로 탐색 (오프셋 스윕)
         const steps = 15;
-        const spread = BUBBLE_R * 1.2; // 타겟 중심에서 좌우로 넓게 포진
+        const spread = BUBBLE_R * 1.2;
         const offsets = [];
         for (let i = 0; i <= steps; i++) {
-            // 0부터 시작해서 좌우로 번갈아가며 생성 (중앙 궤적을 가장 우선시하기 위해)
             const t = i === 0 ? 0 : (i % 2 === 1 ? 1 : -1) * Math.ceil(i / 2) / Math.ceil(steps / 2);
             offsets.push(t * spread);
         }
 
-        // 1. 모든 오프셋에 대해 "직선 경로"를 먼저 전부 시도 (직사 궤적 우선)
         for (const offX of offsets) {
             const fakeTx = target.x + offX;
             const fakeTy = target.y;
 
-            if (isSegmentClear(sx, sy, fakeTx, fakeTy, excl)) {
+            const clearance = getSegmentClearance(sx, sy, fakeTx, fakeTy, excl);
+            if (clearance > 0) {
                 const d = Math.hypot(fakeTx - sx, fakeTy - sy);
-                return {
+                // 중앙을 쏠 수 있으면 중앙 우대 (오프셋에 페널티 부과)
+                const effectiveClearance = clearance - Math.abs(offX) * 0.1;
+                considerPath({
                     vx: (fakeTx - sx) / d * PROJ_SPEED,
                     vy: (fakeTy - sy) / d * PROJ_SPEED, bouncePoint: null
-                };
+                }, effectiveClearance);
             }
         }
 
-        // 벽 반사 시도 헬퍼 — 1구간 + 2구간 모두 통과해야 반환
-        function tryWall(wallX, fakeTx, fakeTy) {
+        // 2. 바운드 경로 탐색 헬퍼 (벽 튕김 처리)
+        function evaluateWallBounce(wallX, offX) {
+            const fakeTx = target.x + offX;
             const rtx = 2 * wallX - fakeTx;
-            const d = Math.hypot(rtx - sx, fakeTy - sy);
-            if (d === 0) return null;
-            const bpY = sy + (wallX - sx) / (rtx - sx) * (fakeTy - sy);
-            if (bpY <= -BUBBLE_R || bpY >= sy) return null;
-            // 1구간: 포신 → 반사점
-            if (!isSegmentClear(sx, sy, wallX, bpY, excl)) return null;
-            // 2구간: 반사점 → 타겟
-            if (!isSegmentClear(wallX, bpY, fakeTx, fakeTy, excl)) return null;
-            return {
+            const d = Math.hypot(rtx - sx, target.y - sy);
+            if (d === 0) return;
+            const bpY = sy + (wallX - sx) / (rtx - sx) * (target.y - sy);
+            if (bpY <= -BUBBLE_R || bpY >= sy) return;
+
+            // 1구간(대포->벽)과 2구간(벽->목표) 중 더 좁은 곳이 해당 경로의 최종 여유도
+            const cl1 = getSegmentClearance(sx, sy, wallX, bpY, excl);
+            if (cl1 < 0) return;
+            const cl2 = getSegmentClearance(wallX, bpY, fakeTx, target.y, excl);
+            if (cl2 < 0) return;
+
+            const minCl = Math.min(cl1, cl2);
+            // 바운드 샷은 기본적으로 직사보다 시각적으로 복잡하므로 약간 페널티(5px) 부과
+            // 하지만 막힌 곳을 우회할 만큼 충분히 널널하다면 직사를 이길 수 있음!
+            const effectiveClearance = minCl - 5 - Math.abs(offX) * 0.1;
+
+            considerPath({
                 vx: (rtx - sx) / d * PROJ_SPEED,
-                vy: (fakeTy - sy) / d * PROJ_SPEED,
+                vy: (target.y - sy) / d * PROJ_SPEED,
                 bouncePoint: { x: wallX, y: bpY }
-            };
+            }, effectiveClearance);
         }
 
         const wallL = BUBBLE_R;
         const wallR = CANVAS_W - BUBBLE_R;
 
-        // 3. 바운드 경로 스윕 (가상 타겟 생성 후 중앙부터 바깥쪽으로 스윕)
-        // 거리가 멀어질수록 튕기는 각도의 미세한 변화가 결과에 큰 영향을 미치므로 
-        // 바운드 샷은 더 넓은 범위를 더 촘촘하게 스윕합니다.
+        // 3. 바운드 오프셋 스윕
         const bounceSteps = 25;
         const bounceSpread = BUBBLE_R * 1.8;
         const bounceOffsets = [];
@@ -451,22 +481,13 @@ const BubbleGame = (() => {
             bounceOffsets.push(t * bounceSpread);
         }
 
-        // 2. 직선 경로가 모두 막혔다면, 각 오프셋에 대해 "반사 경로" 탐색
         for (const offX of bounceOffsets) {
-            const fakeTx = target.x + offX;
-            const fakeTy = target.y;
-
-            let bounce = null;
-            // 타겟 위치에 따라 반대 벽 우선
-            if (target.x < sx) {
-                bounce = tryWall(wallR, fakeTx, fakeTy) ?? tryWall(wallL, fakeTx, fakeTy) ?? null;
-            } else {
-                bounce = tryWall(wallL, fakeTx, fakeTy) ?? tryWall(wallR, fakeTx, fakeTy) ?? null;
-            }
-            if (bounce) return bounce;
+            evaluateWallBounce(wallL, offX);
+            evaluateWallBounce(wallR, offX);
         }
 
-        return null;
+        // 경로가 1개라도 있으면 가장 안전한 경로 반환, 다 막혔으면 null 반환
+        return bestPath;
     }
 
     // ── 충돌 판정 ─────────────────────────────────────────────
