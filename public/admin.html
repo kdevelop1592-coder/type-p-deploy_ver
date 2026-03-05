@@ -11,6 +11,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 </head>
 
 <body>
@@ -232,6 +233,104 @@
 
     </div>
 
+    <!-- 학생 기록 열람 모달 -->
+    <div id="record-modal" class="modal-overlay hidden" onclick="handleRecordModalBgClick(event)">
+        <div class="modal" style="max-width:760px;width:94vw;max-height:90vh;overflow-y:auto"
+            onclick="event.stopPropagation()">
+            <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:20px">
+                <div>
+                    <h3 class="modal-title" id="record-modal-title">📊 학생 기록</h3>
+                    <p id="record-modal-sub" style="font-size:0.85rem;color:var(--text-muted);margin-top:4px"></p>
+                </div>
+                <button class="btn-icon" onclick="closeRecordModal()" style="font-size:1.1rem">✕</button>
+            </div>
+
+            <!-- 요약 통계 카드 4개 -->
+            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px">
+                <div class="card" style="text-align:center;padding:14px 8px">
+                    <div
+                        style="font-size:0.7rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:6px">
+                        최고 타수</div>
+                    <div id="rec-best-wpm" style="font-size:1.8rem;font-weight:900;color:var(--accent-cyan)">—</div>
+                </div>
+                <div class="card" style="text-align:center;padding:14px 8px">
+                    <div
+                        style="font-size:0.7rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:6px">
+                        평균 정확도</div>
+                    <div id="rec-avg-acc" style="font-size:1.8rem;font-weight:900;color:var(--accent-green)">—</div>
+                </div>
+                <div class="card" style="text-align:center;padding:14px 8px">
+                    <div
+                        style="font-size:0.7rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:6px">
+                        총 연습 횟수</div>
+                    <div id="rec-total-count" style="font-size:1.8rem;font-weight:900;color:var(--accent-purple)">—
+                    </div>
+                </div>
+                <div class="card" style="text-align:center;padding:14px 8px">
+                    <div
+                        style="font-size:0.7rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:6px">
+                        누적 타수</div>
+                    <div id="rec-total-keys" style="font-size:1.8rem;font-weight:900;color:var(--accent-yellow)">—</div>
+                </div>
+            </div>
+
+            <!-- 필터 + 차트 -->
+            <div class="card" style="margin-bottom:16px">
+                <div
+                    style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px">
+                    <h4 style="font-size:0.95rem;font-weight:900">📈 월별 타수 변화</h4>
+                    <div style="display:flex;gap:8px">
+                        <select id="rec-mode-filter" class="input-field"
+                            style="padding:6px 10px;width:auto;font-size:0.82rem" onchange="updateRecordChart()">
+                            <option value="all">전체 모드</option>
+                            <option value="keyboard">자리연습</option>
+                            <option value="word">단어</option>
+                            <option value="sentence">문장</option>
+                            <option value="paragraph">문단</option>
+                        </select>
+                        <select id="rec-lang-filter" class="input-field"
+                            style="padding:6px 10px;width:auto;font-size:0.82rem" onchange="updateRecordChart()">
+                            <option value="all">한글+영문</option>
+                            <option value="ko">한글</option>
+                            <option value="en">영문</option>
+                        </select>
+                    </div>
+                </div>
+                <div style="position:relative;height:200px">
+                    <canvas id="rec-wpm-chart"></canvas>
+                </div>
+            </div>
+
+            <!-- 최근 기록 테이블 -->
+            <div class="card">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+                    <h4 style="font-size:0.95rem;font-weight:900">📋 연습 기록 목록</h4>
+                    <span id="rec-table-count" style="font-size:0.82rem;color:var(--text-muted)"></span>
+                </div>
+                <div style="overflow-x:auto;max-height:300px;overflow-y:auto">
+                    <table class="ranking-table" style="width:100%">
+                        <thead style="position:sticky;top:0;z-index:1">
+                            <tr>
+                                <th>날짜</th>
+                                <th>언어</th>
+                                <th>모드</th>
+                                <th>타수 (CPM)</th>
+                                <th>정확도</th>
+                                <th>시간</th>
+                            </tr>
+                        </thead>
+                        <tbody id="rec-table-body">
+                            <tr>
+                                <td colspan="6" style="text-align:center;padding:30px;color:var(--text-muted)">로딩 중...
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- 학생 수정 모달 -->
     <div id="edit-modal" class="modal-overlay hidden">
         <div class="modal">
@@ -333,6 +432,7 @@
           <td>${(s.totalKeystrokes || 0).toLocaleString()} 타</td>
           <td>${s.joinedAt ? new Date(s.joinedAt.toDate()).toLocaleDateString('ko-KR') : '-'}</td>
           <td style="white-space:nowrap;">
+            <button class="btn-icon" onclick="openRecordModal('${s.id}','${s.name}','${s.className}')" title="기록 열람">📊</button>
             <button class="btn-icon" onclick="resetSecondaryPassword('${s.id}', '${s.name}')" title="비밀번호 초기화">🔑</button>
             <button class="btn-icon" onclick="openEditModal('${s.id}','${s.name}','${s.className}')" title="수정">✏️</button>
             <button class="btn-icon" onclick="toggleBanStudent('${s.id}', '${s.name}', ${isBanned})" title="${isBanned ? '차단 해제' : '영구 차단 (로그인 불가)'}">${isBanned ? '✅' : '🚫'}</button>
@@ -621,6 +721,143 @@
             await Records.setKeyboardSettings({});
             renderAdminKeyboard();
             showToast('🔃 기본값으로 초기화되었습니다.');
+        }
+
+        // ── 학생 기록 열람 모달 ──────────────────────────
+        const REC_MODE_LABEL = { keyboard: '자리연습', word: '단어', sentence: '문장', paragraph: '문단' };
+        const REC_LANG_LABEL = { ko: '🇰🇷 한글', en: '🇺🇸 영문' };
+
+        let recAllRecords = [];
+        let recChart = null;
+
+        async function openRecordModal(uid, name, className) {
+            // 모달 초기화
+            document.getElementById('record-modal-title').textContent = `📊 ${name} 학생 기록`;
+            document.getElementById('record-modal-sub').textContent = `${className} · ${name}`;
+            document.getElementById('rec-best-wpm').textContent = '—';
+            document.getElementById('rec-avg-acc').textContent = '—';
+            document.getElementById('rec-total-count').textContent = '—';
+            document.getElementById('rec-total-keys').textContent = '—';
+            document.getElementById('rec-table-body').innerHTML =
+                '<tr><td colspan="6" style="text-align:center;padding:30px;color:var(--text-muted)">로딩 중...</td></tr>';
+            document.getElementById('rec-mode-filter').value = 'all';
+            document.getElementById('rec-lang-filter').value = 'all';
+            if (recChart) { recChart.destroy(); recChart = null; }
+            document.getElementById('record-modal').classList.remove('hidden');
+
+            try {
+                recAllRecords = await Records.getUserRecords(uid);
+                const stuData = allStudents.find(s => s.id === uid);
+                const totalKeys = stuData ? (stuData.totalKeystrokes || 0) : 0;
+                renderRecordStats(totalKeys);
+                initRecordChart();
+                updateRecordChart();
+            } catch (e) {
+                console.error('기록 로드 실패:', e);
+                document.getElementById('rec-table-body').innerHTML =
+                    '<tr><td colspan="6" style="text-align:center;padding:30px;color:var(--accent-red)">기록 로드 실패</td></tr>';
+            }
+        }
+
+        function closeRecordModal() {
+            document.getElementById('record-modal').classList.add('hidden');
+            if (recChart) { recChart.destroy(); recChart = null; }
+            recAllRecords = [];
+        }
+
+        function handleRecordModalBgClick(e) {
+            if (e.target === document.getElementById('record-modal')) closeRecordModal();
+        }
+
+        function renderRecordStats(totalKeys) {
+            if (!recAllRecords.length) return;
+            const wpms = recAllRecords.map(r => r.wpm || 0);
+            const accs = recAllRecords.map(r => r.accuracy || 0);
+            const avgAcc = accs.length ? accs.reduce((a, b) => a + b, 0) / accs.length : 0;
+            document.getElementById('rec-best-wpm').textContent = Math.max(...wpms);
+            document.getElementById('rec-avg-acc').textContent = avgAcc.toFixed(1) + '%';
+            document.getElementById('rec-total-count').textContent = recAllRecords.length + '회';
+            document.getElementById('rec-total-keys').textContent = totalKeys.toLocaleString();
+        }
+
+        function initRecordChart() {
+            const ctx = document.getElementById('rec-wpm-chart').getContext('2d');
+            recChart = new Chart(ctx, {
+                type: 'line',
+                data: { labels: [], datasets: [] },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: { mode: 'index', intersect: false },
+                    plugins: {
+                        legend: { labels: { color: '#a0a0cc', font: { family: 'Noto Sans KR', size: 11 } } },
+                        tooltip: { backgroundColor: '#1a1a35', borderColor: '#2a2a5a', borderWidth: 1, titleColor: '#e8e8ff', bodyColor: '#a0a0cc' }
+                    },
+                    scales: {
+                        x: { grid: { color: 'rgba(42,42,90,0.5)' }, ticks: { color: '#606090', font: { size: 11 } } },
+                        y: { beginAtZero: false, grid: { color: 'rgba(42,42,90,0.5)' }, ticks: { color: '#606090', font: { size: 11 } }, title: { display: true, text: '타수 (CPM)', color: '#606090', font: { size: 11 } } }
+                    }
+                }
+            });
+        }
+
+        function updateRecordChart() {
+            if (!recChart) return;
+            const modeFilter = document.getElementById('rec-mode-filter').value;
+            const langFilter = document.getElementById('rec-lang-filter').value;
+
+            let filtered = recAllRecords;
+            if (modeFilter !== 'all') filtered = filtered.filter(r => r.mode === modeFilter);
+            if (langFilter !== 'all') filtered = filtered.filter(r => r.lang === langFilter);
+
+            const monthly = {};
+            filtered.forEach(r => {
+                if (!r.createdAt) return;
+                const d = r.createdAt.toDate ? r.createdAt.toDate() : new Date(r.createdAt);
+                const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+                if (!monthly[key]) monthly[key] = [];
+                monthly[key].push(r.wpm || 0);
+            });
+
+            const labels = Object.keys(monthly).sort();
+            const avgWpms = labels.map(k => { const a = monthly[k]; return a.reduce((x, y) => x + y, 0) / a.length; });
+            const maxWpms = labels.map(k => Math.max(...monthly[k]));
+
+            recChart.data.labels = labels.map(l => l.replace('-', '년 ') + '월');
+            recChart.data.datasets = [
+                { label: '평균 타수', data: avgWpms, borderColor: '#00d4ff', backgroundColor: 'rgba(0,212,255,0.08)', fill: true, tension: 0.4, pointBackgroundColor: '#00d4ff', pointRadius: 4 },
+                { label: '최고 타수', data: maxWpms, borderColor: '#9b59ff', backgroundColor: 'transparent', borderDash: [5, 5], tension: 0.4, pointBackgroundColor: '#9b59ff', pointRadius: 4 }
+            ];
+            recChart.update();
+            renderRecordTable(modeFilter, langFilter);
+        }
+
+        function renderRecordTable(modeFilter, langFilter) {
+            if (!modeFilter) modeFilter = document.getElementById('rec-mode-filter').value;
+            if (!langFilter) langFilter = document.getElementById('rec-lang-filter').value;
+            let filtered = recAllRecords;
+            if (modeFilter !== 'all') filtered = filtered.filter(r => r.mode === modeFilter);
+            if (langFilter !== 'all') filtered = filtered.filter(r => r.lang === langFilter);
+
+            const tbody = document.getElementById('rec-table-body');
+            document.getElementById('rec-table-count').textContent = `총 ${filtered.length}건`;
+            if (!filtered.length) {
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:30px;color:var(--text-muted)">기록이 없습니다.</td></tr>';
+                return;
+            }
+            tbody.innerHTML = filtered.map(r => {
+                const d = r.createdAt?.toDate ? r.createdAt.toDate() : new Date();
+                const dateStr = d.toLocaleDateString('ko-KR', { year: '2-digit', month: '2-digit', day: '2-digit' }) + ' ' + d.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
+                const accColor = r.accuracy >= 95 ? 'var(--accent-green)' : r.accuracy >= 80 ? 'var(--accent-yellow)' : 'var(--accent-red)';
+                return `<tr>
+                    <td style="color:var(--text-muted);font-size:0.82rem">${dateStr}</td>
+                    <td style="font-size:0.85rem">${REC_LANG_LABEL[r.lang] || r.lang}</td>
+                    <td><span style="background:rgba(155,89,255,0.15);padding:2px 8px;border-radius:99px;font-size:0.78rem">${REC_MODE_LABEL[r.mode] || r.mode}</span></td>
+                    <td><strong style="color:var(--accent-cyan)">${r.wpm}</strong></td>
+                    <td style="color:${accColor};font-weight:700">${r.accuracy}%</td>
+                    <td style="color:var(--text-muted)">${r.duration}초</td>
+                </tr>`;
+            }).join('');
         }
 
         // ── 유틸 ─────────────────────────────
