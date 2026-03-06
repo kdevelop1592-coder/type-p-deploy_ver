@@ -23,8 +23,8 @@ const Auth = (() => {
         sessionStorage.removeItem(FRESH_KEY);
         await auth.signOut();
         // Google 계정 세션도 완전히 종료하여 다음 사용자가 비밀번호를 직접 입력하게 함
-        const returnUrl = encodeURIComponent(window.location.origin + '/index.html');
-        window.location.href = 'https://accounts.google.com/Logout?continue=' + returnUrl;
+        // 'continue' 파라미터가 최신 Google 보안 정책에 의해 차단될 수 있으므로 기본 로그아웃만 수행
+        window.location.href = 'https://accounts.google.com/Logout';
     }
 
     // 관리자 이메일 하드코딩
