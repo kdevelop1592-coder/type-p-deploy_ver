@@ -218,7 +218,14 @@
 .lang-btn.active {
     background: var(--gradient-main);
     color: var(--bg-primary);
-    box-shadow: 0 2px 8px rgba(0, 212, 255, 0.3);
+    box-shadow: 0 4px 15px rgba(0, 212, 255, 0.4);
+    transform: scale(1.05);
+    animation: langPop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes langPop {
+    0% { transform: scale(0.9); }
+    100% { transform: scale(1.05); }
 }
 
 /* ── 결과 카드 ── */

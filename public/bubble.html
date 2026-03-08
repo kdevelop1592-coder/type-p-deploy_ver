@@ -246,6 +246,17 @@
             gameLang = lang;
             document.getElementById('btn-lang-ko').classList.toggle('active', lang === 'ko');
             document.getElementById('btn-lang-en').classList.toggle('active', lang === 'en');
+
+            // 시각적/청각적 피드백 추가
+            if (typeof BubbleGame !== 'undefined' && BubbleGame.playClickSound) {
+                BubbleGame.playClickSound();
+            }
+
+            // 시작 버튼 텍스트 업데이트
+            const startBtn = document.getElementById('btn-game-start');
+            if (startBtn) {
+                startBtn.innerHTML = lang === 'ko' ? '🎮 한글 게임 시작' : '🎮 Start English Game';
+            }
         }
 
         // ── 게임 시작 ─────────────────────────────────────────

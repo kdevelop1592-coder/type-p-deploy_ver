@@ -1,12 +1,12 @@
 // Firebase 설정 및 초기화
 const firebaseConfig = {
-  apiKey: "AIzaSyBFX6GniaMIkDDDgKzxUPP5S0mtu1UfA4E",
-  authDomain: "type-p-3eec8.firebaseapp.com",
-  projectId: "type-p-3eec8",
-  storageBucket: "type-p-3eec8.firebasestorage.app",
-  messagingSenderId: "29245150954",
-  appId: "1:29245150954:web:cc936070b76e828f24e993",
-  measurementId: "G-NDRDCSXMRQ"
+  apiKey: "AIzaSyBn30VdlBsdSZYj4U44kzPXLVGdHsYj57Y",
+  authDomain: "type-p-deploy-test.firebaseapp.com",
+  projectId: "type-p-deploy-test",
+  storageBucket: "type-p-deploy-test.firebasestorage.app",
+  messagingSenderId: "204016972695",
+  appId: "1:204016972695:web:d889797df46caa15818ad2",
+  measurementId: "G-ZSN7ECF7K6"
 };
 
 // Firebase 앱 초기화
@@ -22,4 +22,4 @@ const storage = firebase.storage();
 auth.setPersistence(firebase.auth.Auth.Persistence.SESSION);
 
 // 관리자 이메일
-const ADMIN_EMAIL = 'leeshouxuan@gmail.com';
+const ADMIN_EMAIL = 'kdevelop1592@gmail.com';

@@ -1004,5 +1004,21 @@ const BubbleGame = (() => {
         specialProb = prob;
     }
 
-    return { init, shoot, aim, pause, resume, stop, getLiveWords, setRenderScale, setSpecialProb };
+    function playClickSound() {
+        try {
+            const ctx = getAudioCtx();
+            const now = ctx.currentTime;
+            const osc = ctx.createOscillator();
+            const g = ctx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(800, now);
+            osc.frequency.exponentialRampToValueAtTime(400, now + 0.05);
+            g.gain.setValueAtTime(0.1, now);
+            g.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+            osc.connect(g); g.connect(ctx.destination);
+            osc.start(now); osc.stop(now + 0.05);
+        } catch (e) { }
+    }
+
+    return { init, shoot, aim, pause, resume, stop, getLiveWords, setRenderScale, setSpecialProb, playClickSound };
 })();
